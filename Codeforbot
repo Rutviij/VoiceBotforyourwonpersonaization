@@ -1,0 +1,240 @@
+import pyaudio
+import speech_recognition as sr
+import pyttsx3
+import openai
+import requests
+import cv2
+import time
+import re
+from langdetect import detect
+import tkinter as tk
+from tkinter import scrolledtext
+
+# Initialize text-to-speech engine
+engine = pyttsx3.init()
+
+# Set up OpenAI API key
+openai.api_key = 'your-openai-api-key'
+
+# OpenWeatherMap API key
+weather_api_key = 'your-openweather-api-key'
+
+# Bing Search API key
+bing_api_key = 'your-bing-api-key'
+bing_endpoint = 'https://api.bing.microsoft.com/v7.0/search'
+
+# Initialize the speech recognizer and microphone
+recognizer = sr.Recognizer()
+microphone = sr.Microphone()
+
+# Initialize voice customization variables
+voice_id = 0  # Default voice index
+rate = 150    # Default speech rate
+volume = 1.0  # Default volume (0.0 to 1.0)
+
+# Activation phrase
+activation_phrase = "hey assistant"
+
+# Set default language for TTS
+default_language = 'en'  # Default to English
+
+def set_voice(voice_index, lang_code='en'):
+    global voice_id
+    voices = engine.getProperty('voices')
+    for voice in voices:
+        if lang_code in voice.languages:
+            engine.setProperty('voice', voice.id)
+            voice_id = voice_index
+            return f"Voice set to {voice.name}."
+    return "Voice for the specified language not found."
+
+def set_rate(new_rate):
+    global rate
+    rate = new_rate
+    engine.setProperty('rate', rate)
+    return f"Speech rate set to {rate} words per minute."
+
+def set_volume(new_volume):
+    global volume
+    volume = new_volume
+    engine.setProperty('volume', volume)
+    return f"Volume set to {volume * 100}%."
+
+def speak(text, lang_code='en'):
+    set_voice(voice_id, lang_code)
+    engine.say(text)
+    engine.runAndWait()
+
+def listen(lang_code='en'):
+    with microphone as source:
+        print("Listening...")
+        audio = recognizer.listen(source)
+    try:
+        print("Recognizing...")
+        text = recognizer.recognize_google(audio, language=lang_code).lower()
+        print(f"User said: {text}")
+        return text
+    except sr.UnknownValueError:
+        return None
+    except sr.RequestError:
+        return None
+
+def generate_response(prompt):
+    response = openai.Completion.create(
+        engine="text-davinci-003",  # or "gpt-3.5-turbo", depending on your access
+        prompt=prompt,
+        max_tokens=150
+    )
+    return response.choices[0].text.strip()
+
+def get_weather(city, lang_code='en'):
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_api_key}&units=metric"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("weather"):
+            weather_description = data["weather"][0]["description"]
+            temperature = data["main"]["temp"]
+            return f"The weather in {city} is currently {weather_description} with a temperature of {temperature}°C."
+        else:
+            return "Sorry, I couldn't retrieve the weather information."
+    else:
+        return "Sorry, there was a problem with the weather service."
+
+def get_joke(lang_code='en'):
+    url = "https://v2.jokeapi.dev/joke/Any"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("joke"):
+            return data["joke"]
+        elif data.get("setup") and data.get("delivery"):
+            return f"{data['setup']} {data['delivery']}"
+        else:
+            return "Sorry, I couldn't find a joke right now."
+    else:
+        return "Sorry, there was a problem with the joke service."
+
+def search(query, lang_code='en'):
+    headers = {"Ocp-Apim-Subscription-Key": bing_api_key}
+    params = {"q": query, "count": 1}  # Adjust count for more results
+    response = requests.get(bing_endpoint, headers=headers, params=params)
+    if response.status_code == 200:
+        search_results = response.json()
+        if search_results.get("webPages"):
+            results = search_results["webPages"]["value"]
+            if results:
+                top_result = results[0]
+                return f"Here's what I found: {top_result['snippet']} For more details, visit {top_result['url']}."
+        return "Sorry, I couldn't find any information."
+    else:
+        return "Sorry, there was a problem with the search service."
+
+def take_photo():
+    # Initialize the camera
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        return "Sorry, I couldn't access the camera."
+
+    # Allow the camera to warm up
+    time.sleep(2)
+    
+    # Capture a frame
+    ret, frame = cap.read()
+    if not ret:
+        cap.release()
+        return "Sorry, I couldn't take a photo."
+
+    # Save the captured image
+    photo_filename = "photo.jpg"
+    cv2.imwrite(photo_filename, frame)
+    cap.release()
+    return f"Photo taken and saved as {photo_filename}."
+
+def evaluate_expression(expression):
+    try:
+        # Remove any non-mathematical characters except digits, operators, and parentheses
+        sanitized_expression = re.sub(r'[^0-9+\-*/().]', '', expression)
+        result = eval(sanitized_expression)
+        return f"The result of the calculation is {result}."
+    except Exception as e:
+        return f"Sorry, I couldn't evaluate the expression. Error: {str(e)}"
+
+def provide_help(lang_code='en'):
+    help_text = (
+        "Here are some things I can do for you: "
+        "1. You can ask for the weather by saying 'What's the weather in [city]?'. "
+        "2. I can tell you a joke if you say 'Tell me a joke'. "
+        "3. To search for information, say 'Search for [query]'. "
+        "4. To take a photo, say 'Take a photo'. "
+        "5. To do mathematics, say 'Calculate [expression]'. "
+        "6. To customize the voice, say 'Set voice [index]', 'Set rate [rate]', or 'Set volume [volume]'. "
+        "7. To exit the application, simply say 'exit' or 'goodbye'. "
+        "8. If you need help at any time, you can say 'help' or 'what can you do?'."
+    )
+    return help_text
+
+def process_command(command):
+    detected_language = detect(command)  # Detect the language of the user input
+    command_lower = command.lower()
+
+    if 'exit' in command_lower or 'goodbye' in command_lower:
+        response = "Goodbye!"
+        speak(response, detected_language)
+        return response
+    elif 'weather' in command_lower:
+        city = command_lower.split("in")[-1].strip()
+        response = get_weather(city, detected_language)
+        speak(response, detected_language)
+        return response
+    elif 'joke' in command_lower:
+        response = get_joke(detected_language)
+        speak(response, detected_language)
+        return response
+    elif 'search' in command_lower:
+        query = command_lower.split("search for")[-1].strip()
+        response = search(query, detected_language)
+        speak(response, detected_language)
+        return response
+    elif 'take a photo' in command_lower:
+        response = take_photo()
+        speak(response, detected_language)
+        return response
+    elif 'calculate' in command_lower:
+        expression = command_lower.split("calculate")[-1].strip()
+        response = evaluate_expression(expression)
+        speak(response, detected_language)
+        return response
+    elif 'help' in command_lower or 'what can you do' in command_lower:
+        response = provide_help(detected_language)
+        speak(response, detected_language)
+        return response
+    else:
+        response = generate_response(command)
+        speak(response, detected_language)
+        return response
+
+def on_speak():
+    command = text_entry.get()
+    response = process_command(command)
+    text_area.insert(tk.END, f"User: {command}\nBot: {response}\n")
+    text_area.yview(tk.END)
+    text_entry.delete(0, tk.END)
+
+# Initialize Tkinter
+root = tk.Tk()
+root.title("Voicebot Interface")
+
+# Create a text area for conversation history
+text_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, height=20, width=50)
+text_area.pack(padx=10, pady=10)
+
+# Create a text entry box for user input
+text_entry = tk.Entry(root, width=50)
+text_entry.pack(padx=10, pady=5)
+
+# Create a button to send the command
+send_button = tk.Button(root, text="Send", command=on_speak)
+send_button.pack(padx=10, pady=5)
+
+root.mainloop()

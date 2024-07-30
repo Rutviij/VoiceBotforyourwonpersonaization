@@ -13,4 +13,6 @@ pip install requests
 pip install opencv-python
 
 
+
+
 The perfect voice bot for you optimized for your personalization

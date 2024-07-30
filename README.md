@@ -11,7 +11,10 @@ It has a help section also
 # Getting Started
 
 
-'''pip install SpeechRecognition''' 
+'''
+pip install SpeechRecognition 
+
+''' 
 
 
 pip install pyttsx3 

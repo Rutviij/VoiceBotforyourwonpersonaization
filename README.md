@@ -11,38 +11,6 @@ It has a help section also
 # Getting Started
 
 
-'''
-pip install SpeechRecognition 
-
-''' 
-
-
-pip install pyttsx3 
-
-pip install google-cloud-speech 
-
-pip install openai
-
-pip install requests
-
-pip install opencv-python
-
-pip instal langdetect
-
-pip install pyaudio
-
-
-
-
-
-
-
-
-
-
-
-# VoiceBot Downloads
-
 pip install SpeechRecognition 
 
 pip install pyttsx3 

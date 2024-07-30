@@ -12,6 +12,15 @@ pip install requests
 
 pip install opencv-python
 
+pip instal langdetect
+
+pip install pyaudio
+
+
+
+
+
+
 
 
 

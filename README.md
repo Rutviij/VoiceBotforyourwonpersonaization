@@ -33,7 +33,9 @@ You need to get a open ai key, A openweathermap api key, and a microsoft bing ap
 Here are the links to get them,
 
 Bing : https://www.microsoft.com/en-us/bing/apis/bing-web-search-api
+
 Openai : https://platform.openai.com/settings/profile?tab=api-keys
+
 OpenWeatherMap : https://www.visualcrossing.com/weather-api
 
 

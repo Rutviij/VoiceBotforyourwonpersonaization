@@ -7,8 +7,6 @@ import cv2
 import time
 import re
 from langdetect import detect
-import tkinter as tk
-from tkinter import scrolledtext
 
 # Initialize text-to-speech engine
 engine = pyttsx3.init()
@@ -214,27 +212,15 @@ def process_command(command):
         speak(response, detected_language)
         return response
 
-def on_speak():
-    command = text_entry.get()
-    response = process_command(command)
-    text_area.insert(tk.END, f"User: {command}\nBot: {response}\n")
-    text_area.yview(tk.END)
-    text_entry.delete(0, tk.END)
+def main():
+    while True:
+        print("Say something...")
+        command = listen()
+        if command:
+            response = process_command(command)
+            print(f"Bot: {response}")
+        if command and ('exit' in command or 'goodbye' in command):
+            break
 
-# Initialize Tkinter
-root = tk.Tk()
-root.title("Voicebot Interface")
-
-# Create a text area for conversation history
-text_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, height=20, width=50)
-text_area.pack(padx=10, pady=10)
-
-# Create a text entry box for user input
-text_entry = tk.Entry(root, width=50)
-text_entry.pack(padx=10, pady=5)
-
-# Create a button to send the command
-send_button = tk.Button(root, text="Send", command=on_speak)
-send_button.pack(padx=10, pady=5)
-
-root.mainloop()
+if __name__ == "__main__":
+    main()
